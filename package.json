@@ -1,5 +1,5 @@
 {
-  "name": "lazer-expo-airplay",
+  "name": "@lazer/expo-airplay",
   "version": "0.1.0",
   "description": "Expo module for controller airpaly streaming",
   "main": "build/index.js",
