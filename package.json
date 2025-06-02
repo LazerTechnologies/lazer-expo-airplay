@@ -13,13 +13,18 @@
     "prepublishOnly": "expo-module prepublishOnly",
     "expo-module": "expo-module",
     "open:ios": "xed example/ios",
-    "open:android": "open -a \"Android Studio\" example/android"
+    "open:android": "open -a \"Android Studio\" example/android",
+    "dev:ios": "bun run --cwd example ios",
+    "dev:android": "bun run --cwd example android",
+    "dev": "concurrently \"bun run build\" \"bun run dev:ios\"  -n BUILD,IOS -c yellow,blue"
   },
   "keywords": [
     "react-native",
     "expo",
     "lazer-expo-airplay",
-    "LazerExpoAirplay"
+    "LazerExpoAirplay",
+    "airplay",
+    "chromecast"
   ],
   "repository": "https://google.com",
   "bugs": {
@@ -28,7 +33,9 @@
   "author": "Chris Mitchell <chris@delacour.co.nz> (UrbanChrisy)",
   "license": "MIT",
   "homepage": "https://google.com#readme",
-  "dependencies": {},
+  "dependencies": {
+    "concurrently": "^9.1.2"
+  },
   "devDependencies": {
     "@types/react": "~19.0.0",
     "expo-module-scripts": "^4.1.6",
