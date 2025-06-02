@@ -1,6 +1,9 @@
 # @lazer/expo-airplay
 
-Expo module for controller airpaly streaming
+Expo module for controlling airpaly
+
+> ⚠️ **Platform Support**: This package is iOS-only and will not work on
+> Android, web, or any other platform.
 
 # API documentation
 
@@ -16,6 +19,8 @@ follow the link and there is no documentation available then this library is not
 yet usable within managed projects &mdash; it is likely to be included in an
 upcoming Expo SDK release.
 
+> Note: This package is iOS-only and will not work on Android or web platforms.
+
 # Installation in bare React Native projects
 
 For bare React Native projects, you must ensure that you have
@@ -28,11 +33,11 @@ before continuing.
 npm install @lazer/expo-airplay
 ```
 
-### Configure for Android
-
 ### Configure for iOS
 
 Run `npx pod-install` after installing the npm package.
+
+> Note: This package is iOS-only and does not require any Android configuration.
 
 # Contributing
 
