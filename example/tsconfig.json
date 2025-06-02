@@ -1,0 +1,10 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "lazer-expo-airplay": ["../src/index"],
+      "lazer-expo-airplay/*": ["../src/*"]
+    }
+  }
+}
