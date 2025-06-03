@@ -1,33 +1,17 @@
-import { useEvent } from 'expo';
-import LazerExpoAirplay, { AirplayRoute } from 'lazer-expo-airplay';
-import React, { useEffect, useState } from 'react';
-import { Alert, Button, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import LazerExpoAirplay, { OnRouteChangeEventPayload, useCurrentRoute } from '@lazer-tech/expo-airplay';
+import { useEventListener } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import React, { useState } from 'react';
+import { ActivityIndicator, Button, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function App() {
-  const [currentRoute, setCurrentRoute] = useState<AirplayRoute | null>(null);
+  const { currentRoute, isLoading, error, refresh } = useCurrentRoute();
+  const [eventHistory, setEventHistory] = useState<OnRouteChangeEventPayload[]>([]);
 
-  const onRouteChangePayload = useEvent(LazerExpoAirplay, 'onRouteChange');
-
-  useEffect(() => {
-    // Initial load of routes
-    loadCurrentRoute();
-  }, []);
-
-  const loadCurrentRoute = async () => {
-    try {
-      const current = await LazerExpoAirplay.getCurrentRoute();
-      if (current.success) {
-        setCurrentRoute(current.data);
-      } else {
-        setCurrentRoute(null);
-        console.log('No audio route available:', current.error);
-      }
-    } catch (error) {
-      console.error('Error loading current route:', error);
-      setCurrentRoute(null);
-    }
-  };
+  useEventListener(LazerExpoAirplay, 'onRouteChange', (event) => {
+    console.log('Route changed:', event);
+    setEventHistory(prev => [...prev, event]);
+  });
 
   const player = useVideoPlayer({
     uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
@@ -39,9 +23,15 @@ export default function App() {
         <Text style={styles.header}>React Native Airplay API Example</Text>
 
         <Group name="Current Audio Route">
-          <Text style={styles.routeInfo}>
-            {currentRoute ? JSON.stringify(currentRoute, null, 2) : 'No audio route available'}
-          </Text>
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#0000ff" />
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : (
+            <Text style={styles.routeInfo}>
+              {currentRoute ? JSON.stringify(currentRoute, null, 2) : 'No audio route available'}
+            </Text>
+          )}
         </Group>
 
         <Group name="Controls">
@@ -56,13 +46,17 @@ export default function App() {
 
           <Button
             title="Refresh Current Route"
-            onPress={loadCurrentRoute}
+            onPress={refresh}
           />
         </Group>
 
-        <Group name="Events">
-          <Text style={styles.eventText}>Route Change:</Text>
-          <Text style={styles.eventData}>{JSON.stringify(onRouteChangePayload, null, 2)}</Text>
+        <Group name="Event History">
+          {eventHistory.map((event, index) => (
+            <View key={index} style={styles.eventItem}>
+              <Text style={styles.eventText}>Event {index + 1}:</Text>
+              <Text style={styles.eventData}>{JSON.stringify(event, null, 2)}</Text>
+            </View>
+          ))}
         </Group>
 
         <VideoView style={styles.view} player={player} />
@@ -71,89 +65,60 @@ export default function App() {
   );
 }
 
-function Group(props: { name: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.group}>
-      <Text style={styles.groupHeader}>{props.name}</Text>
-      {props.children}
-    </View>
-  );
-}
+const Group = ({ name, children }: { name: string; children: React.ReactNode }) => (
+  <View style={styles.group}>
+    <Text style={styles.groupTitle}>{name}</Text>
+    {children}
+  </View>
+);
 
 const styles = StyleSheet.create({
-  header: {
-    fontSize: 30,
-    margin: 20,
-  },
-  groupHeader: {
-    fontSize: 20,
-    marginBottom: 20,
-  },
-  group: {
-    margin: 20,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-  },
   container: {
     flex: 1,
-    backgroundColor: '#eee',
+    backgroundColor: '#fff',
   },
-  view: {
-    flex: 1,
-    width: '100%',
-    height: 200,
+  header: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginVertical: 20,
   },
-  routeButton: {
+  group: {
     padding: 15,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  groupTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     marginBottom: 10,
   },
-  selectedRoute: {
-    backgroundColor: '#e3f2fd',
-    borderColor: '#2196f3',
-    borderWidth: 1,
-  },
-  airplayRoute: {
-    backgroundColor: '#f3e5f5',
-    borderColor: '#9c27b0',
-    borderWidth: 1,
-  },
-  routeName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  routeType: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  routeId: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
-  },
   routeInfo: {
-    fontSize: 14,
-    color: '#333',
+    fontFamily: 'monospace',
   },
-  noRoutesText: {
-    fontSize: 14,
-    color: '#666',
-    fontStyle: 'italic',
-  },
-  eventText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  eventData: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
+  errorText: {
+    color: 'red',
+    fontFamily: 'monospace',
   },
   buttonSpacer: {
     height: 10,
+  },
+  eventItem: {
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 5,
+  },
+  eventText: {
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  eventData: {
+    fontFamily: 'monospace',
+  },
+  view: {
+    width: '100%',
+    height: 300,
+    marginTop: 20,
   },
 });

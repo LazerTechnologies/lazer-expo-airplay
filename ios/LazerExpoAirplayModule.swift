@@ -132,18 +132,24 @@ public class LazerExpoAirplayModule: Module {
   }
 
   private func routeDescriptionToDictionary(_ route: AVAudioSessionRouteDescription) -> [String:
-    Any]?
+    Any]
   {
-    guard let primaryOutput = route.outputs.first else {
-      return nil
+    if let primaryOutput = route.outputs.first {
+      let isAirPlay = primaryOutput.portType == .airPlay
+      return [
+        "route_id": primaryOutput.uid,
+        "route_name": primaryOutput.portName,
+        "port_type": primaryOutput.portType.rawValue,
+        "is_airplay": isAirPlay,
+      ]
     }
 
-    let isAirPlay = primaryOutput.portType == .airPlay
+    // Default to built-in route if no output is available
     return [
-      "route_id": primaryOutput.uid,
-      "route_name": primaryOutput.portName,
-      "port_type": primaryOutput.portType.rawValue,
-      "is_airplay": isAirPlay,
+      "route_id": "Speaker",
+      "route_name": "Speaker",
+      "port_type": AVAudioSession.Port.builtInSpeaker.rawValue,
+      "is_airplay": false,
     ]
   }
 
@@ -156,11 +162,8 @@ public class LazerExpoAirplayModule: Module {
     }
 
     let currentRoute = audioSession.currentRoute
-    guard let routeDict = routeDescriptionToDictionary(currentRoute) else {
-      return .failure(
-        self.createError(
-          .noAudioOutputAvailable, "No audio output available"))
-    }
+    let routeDict = routeDescriptionToDictionary(currentRoute)
+      
     return .success(routeDict)
   }
 

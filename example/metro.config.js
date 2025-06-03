@@ -19,7 +19,7 @@ config.resolver.nodeModulesPaths = [
 ];
 
 config.resolver.extraNodeModules = {
-  'lazer-expo-airplay': '..',
+  '@lazer-tech/expo-airplay': '..',
 };
 
 config.watchFolders = [path.resolve(__dirname, '..')];

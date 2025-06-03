@@ -1,8 +1,8 @@
 {
-  "private": false,
   "name": "@lazer-tech/expo-airplay",
   "version": "0.1.2",
-  "description": "Expo module for controller airpaly streaming",
+  "author": "Chris Mitchell <chris@delacour.co.nz> (UrbanChrisy)",
+  "repository": "https://github.com/LazerTechnologies/lazer-expo-airplay",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "scripts": {
@@ -19,6 +19,23 @@
     "dev:android": "bun run --cwd example android",
     "dev": "concurrently \"bun run build\" \"bun run dev:ios\"  -n BUILD,IOS -c yellow,blue"
   },
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  },
+  "devDependencies": {
+    "@types/react": "~19.0.0",
+    "concurrently": "^9.1.2",
+    "expo": "~53.0.0",
+    "expo-module-scripts": "^4.1.6",
+    "react-native": "0.79.1"
+  },
+  "bugs": {
+    "url": "https://github.com/LazerTechnologies/lazer-expo-airplay/issues"
+  },
+  "description": "Expo module for controller airpaly streaming",
+  "homepage": "https://www.lazertechnologies.com",
   "keywords": [
     "react-native",
     "expo",
@@ -27,28 +44,9 @@
     "airplay",
     "chromecast"
   ],
-  "repository": "https://github.com/LazerTechnologies/lazer-expo-airplay",
-  "bugs": {
-    "url": "https://github.com/LazerTechnologies/lazer-expo-airplay/issues"
-  },
-  "author": "Chris Mitchell <chris@delacour.co.nz> (UrbanChrisy)",
   "license": "MIT",
-  "homepage": "https://www.lazertechnologies.com",
-  "dependencies": {
-    "concurrently": "^9.1.2"
-  },
-  "devDependencies": {
-    "@types/react": "~19.0.0",
-    "expo-module-scripts": "^4.1.6",
-    "expo": "~53.0.0",
-    "react-native": "0.79.1"
-  },
-  "peerDependencies": {
-    "expo": "*",
-    "react": "*",
-    "react-native": "*"
-  },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
+  "private": false,
   "publishConfig": {
     "access": "public"
   }

@@ -25,6 +25,7 @@ export type LazerExpoAirplayModuleResult<T> = Promise<{
 
 export type OnRouteChangeEventPayload = {
   current_route: AirplayRoute;
+  previous_route: AirplayRoute;
   state: ConnectionState;
 };
 
