@@ -27,13 +27,13 @@
     "airplay",
     "chromecast"
   ],
-  "repository": "https://google.com",
+  "repository": "https://github.com/LazerTechnologies/lazer-expo-airplay",
   "bugs": {
-    "url": "https://google.com/issues"
+    "url": "https://github.com/LazerTechnologies/lazer-expo-airplay/issues"
   },
   "author": "Chris Mitchell <chris@delacour.co.nz> (UrbanChrisy)",
   "license": "MIT",
-  "homepage": "https://google.com#readme",
+  "homepage": "https://www.lazertechnologies.com",
   "dependencies": {
     "concurrently": "^9.1.2"
   },
