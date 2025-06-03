@@ -9,8 +9,6 @@ export default function App() {
 
   const onRouteChangePayload = useEvent(LazerExpoAirplay, 'onRouteChange');
 
-  console.log('onRouteChangePayload', onRouteChangePayload);
-
   useEffect(() => {
     // Initial load of routes
     loadCurrentRoute();
