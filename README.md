@@ -41,6 +41,34 @@ if (result.success) {
 }
 ```
 
+### Hooks
+
+#### `useCurrentRoute()`
+
+A React hook that provides the current audio route and a function to refresh it.
+This hook automatically updates when the route changes.
+
+```typescript
+import { useCurrentRoute } from "@lazer/expo-airplay";
+
+function MyComponent() {
+  const { route, refresh } = useCurrentRoute();
+
+  return (
+    <View>
+      <Text>Current Route: {route?.route_name}</Text>
+      <Text>Is AirPlay: {route?.is_airplay ? "Yes" : "No"}</Text>
+      <Button title="Refresh Route" onPress={refresh} />
+    </View>
+  );
+}
+```
+
+The hook returns an object with:
+
+- `route`: The current `AirplayRoute` or `null` while loading
+- `refresh`: A function to manually refresh the current route
+
 ### Events
 
 #### `onRouteChange`
@@ -73,10 +101,10 @@ useEffect(() => {
 
 ```typescript
 export type AirplayRoute = {
-  route_id: string;
-  route_name: string;
-  port_type: string;
-  is_airplay: boolean;
+  route_id: string; // Unique identifier for the route (e.g., "Speaker", "AirPlay-123")
+  route_name: string; // Display name of the route (e.g., "Speaker", "Living Room TV")
+  port_type: string; // iOS port type (e.g., "Speaker", "AirPlay")
+  is_airplay: boolean; // Whether the route is an AirPlay device
 };
 
 export type ConnectionState =
@@ -149,8 +177,6 @@ export default function AirPlayExample() {
     const result = await LazerExpoAirplay.getCurrentRoute();
     if (result.success) {
       setCurrentRoute(result.data);
-    } else {
-      setCurrentRoute(null);
     }
   };
 
@@ -161,9 +187,7 @@ export default function AirPlayExample() {
   return (
     <View style={{ padding: 20 }}>
       <Text>Current Audio Route:</Text>
-      <Text>
-        {currentRoute ? currentRoute.route_name : "No route available"}
-      </Text>
+      <Text>{currentRoute?.route_name || "Loading..."}</Text>
       <Text>Type: {currentRoute?.port_type}</Text>
       <Text>AirPlay: {currentRoute?.is_airplay ? "Yes" : "No"}</Text>
 
