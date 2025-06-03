@@ -1,6 +1,6 @@
 {
   "name": "@lazer-tech/expo-airplay",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "author": "Chris Mitchell <chris@delacour.co.nz> (UrbanChrisy)",
   "repository": "https://github.com/LazerTechnologies/lazer-expo-airplay",
   "main": "build/index.js",
