@@ -1,19 +1,33 @@
-import type { StyleProp, ViewStyle } from 'react-native';
+export type AirplayRoute = {
+  route_id: string;
+  route_name: string;
+  port_type: string;
+  is_airplay: boolean;
+};
 
-export type OnLoadEventPayload = {
-  url: string;
+export type ConnectionState =
+  | 'device_available'
+  | 'device_unavailable'
+  | 'category_changed'
+  | 'override'
+  | 'wake_from_sleep'
+  | 'no_suitable_route'
+  | 'configuration_changed'
+  | 'unknown';
+
+export type LazerExpoAirplayModuleResult<T> = Promise<{
+  success: true
+  data: T
+} | {
+  success: false
+  error: string
+}>
+
+export type OnRouteChangeEventPayload = {
+  current_route: AirplayRoute;
+  state: ConnectionState;
 };
 
 export type LazerExpoAirplayModuleEvents = {
-  onChange: (params: ChangeEventPayload) => void;
-};
-
-export type ChangeEventPayload = {
-  value: string;
-};
-
-export type LazerExpoAirplayViewProps = {
-  url: string;
-  onLoad: (event: { nativeEvent: OnLoadEventPayload }) => void;
-  style?: StyleProp<ViewStyle>;
+  onRouteChange: (payload: OnRouteChangeEventPayload) => void;
 };

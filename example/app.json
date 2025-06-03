@@ -14,7 +14,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "expo.modules.lazerexpoairplay.example"
+      "bundleIdentifier": "expo.modules.lazerexpoairplay.example",
+      "appleTeamId": "GG87265ZKS"
     },
     "android": {
       "adaptiveIcon": {
@@ -26,6 +27,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-video",
+        {
+          "supportsPictureInPicture": true,
+          "supportsBackgroundPlayback": true
+        }
+      ]
+    ]
   }
 }

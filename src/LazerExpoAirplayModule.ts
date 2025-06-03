@@ -1,11 +1,11 @@
 import { NativeModule, requireNativeModule } from 'expo';
 
-import { LazerExpoAirplayModuleEvents } from './LazerExpoAirplay.types';
+import { AirplayRoute, LazerExpoAirplayModuleEvents, LazerExpoAirplayModuleResult } from './LazerExpoAirplay.types';
 
 declare class LazerExpoAirplayModule extends NativeModule<LazerExpoAirplayModuleEvents> {
-  PI: number;
-  hello(): string;
-  setValueAsync(value: string): Promise<void>;
+  getCurrentRoute(): LazerExpoAirplayModuleResult<AirplayRoute | null>;
+  show(): LazerExpoAirplayModuleResult<void>;
+  selectRoute(routeId: string): LazerExpoAirplayModuleResult<boolean>;
 }
 
 // This call loads the native module object from the JSI.

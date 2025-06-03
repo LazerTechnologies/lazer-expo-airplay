@@ -5,10 +5,11 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios --device"
   },
   "dependencies": {
     "expo": "~53.0.9",
+    "expo-video": "~2.1.9",
     "react": "19.0.0",
     "react-native": "0.79.2"
   },
