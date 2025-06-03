@@ -13,17 +13,21 @@ export default function App() {
 
   useEffect(() => {
     // Initial load of routes
-    loadRoutes();
+    loadCurrentRoute();
   }, []);
 
-  const loadRoutes = async () => {
+  const loadCurrentRoute = async () => {
     try {
       const current = await LazerExpoAirplay.getCurrentRoute();
       if (current.success) {
         setCurrentRoute(current.data);
+      } else {
+        setCurrentRoute(null);
+        console.log('No audio route available:', current.error);
       }
     } catch (error) {
-      console.error('Error loading routes:', error);
+      console.error('Error loading current route:', error);
+      setCurrentRoute(null);
     }
   };
 
@@ -36,23 +40,25 @@ export default function App() {
       <ScrollView style={styles.container}>
         <Text style={styles.header}>React Native Airplay API Example</Text>
 
-        <Group name="Current Route">
+        <Group name="Current Audio Route">
           <Text style={styles.routeInfo}>
-            {currentRoute ? JSON.stringify(currentRoute, null, 2) : 'No route selected'}
+            {currentRoute ? JSON.stringify(currentRoute, null, 2) : 'No audio route available'}
           </Text>
         </Group>
 
-        <Group name="Async functions">
+        <Group name="Controls">
           <Button
-            title="Show Airplay"
+            title="Show AirPlay Picker"
             onPress={async () => {
               await LazerExpoAirplay.show();
             }}
           />
 
+          <View style={styles.buttonSpacer} />
+
           <Button
-            title="Refresh Routes"
-            onPress={loadRoutes}
+            title="Refresh Current Route"
+            onPress={loadCurrentRoute}
           />
         </Group>
 
@@ -111,6 +117,11 @@ const styles = StyleSheet.create({
     borderColor: '#2196f3',
     borderWidth: 1,
   },
+  airplayRoute: {
+    backgroundColor: '#f3e5f5',
+    borderColor: '#9c27b0',
+    borderWidth: 1,
+  },
   routeName: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -120,9 +131,19 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
   },
+  routeId: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
   routeInfo: {
     fontSize: 14,
     color: '#333',
+  },
+  noRoutesText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
   },
   eventText: {
     fontSize: 16,
@@ -133,5 +154,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 5,
+  },
+  buttonSpacer: {
+    height: 10,
   },
 });
