@@ -5,7 +5,6 @@ import { AirplayRoute, LazerExpoAirplayModuleEvents, LazerExpoAirplayModuleResul
 declare class LazerExpoAirplayModule extends NativeModule<LazerExpoAirplayModuleEvents> {
   getCurrentRoute(): LazerExpoAirplayModuleResult<AirplayRoute | null>;
   show(): LazerExpoAirplayModuleResult<void>;
-  selectRoute(routeId: string): LazerExpoAirplayModuleResult<boolean>;
 }
 
 // This call loads the native module object from the JSI.

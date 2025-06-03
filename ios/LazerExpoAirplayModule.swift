@@ -4,6 +4,8 @@ import ExpoModulesCore
 
 public class LazerExpoAirplayModule: Module {
   private var routeObserver: NSKeyValueObservation?
+  private var audioSession: AVAudioSession?
+  private var routePickerView: AVRoutePickerView?
 
   public func definition() -> ModuleDefinition {
     Name("LazerExpoAirplay")
@@ -20,12 +22,9 @@ public class LazerExpoAirplayModule: Module {
       return result.toDictionary()
     }
 
-    AsyncFunction("selectRoute") { (routeId: String) -> [String: Any] in
-      let result = self.selectRoute(routeId: routeId)
-      return result.toDictionary()
-    }
-
     OnCreate {
+      self.audioSession = AVAudioSession.sharedInstance()
+      self.routePickerView = AVRoutePickerView()
       self.setupAirPlayObserver()
     }
 
@@ -72,6 +71,7 @@ public class LazerExpoAirplayModule: Module {
         }
 
         if let routeInfo = routeInfo.data {
+          // Send general route change event
           self.sendEvent(
             "onRouteChange",
             [
@@ -84,47 +84,46 @@ public class LazerExpoAirplayModule: Module {
   }
 
   private func getCurrentRoute() -> LazerResult<[String: Any], Error> {
-    let audioSession = AVAudioSession.sharedInstance()
+    guard let audioSession = self.audioSession else {
+      return .failure(
+        NSError(
+          domain: "LazerExpoAirplay", code: -1,
+          userInfo: [NSLocalizedDescriptionKey: "Audio session not initialized"]))
+    }
 
     let currentRoute = audioSession.currentRoute
     let outputs = currentRoute.outputs
 
     print("outputs: \(outputs)")
 
-    // Check if there's an AirPlay output
-    let airPlayOutput = outputs.first { output in
-      print("Checking output: \(output.portName) with type: \(output.portType)")
-      return output.portType == .airPlay
+    // Get the primary output (usually the first one)
+    guard let primaryOutput = outputs.first else {
+      return .failure(
+        NSError(
+          domain: "LazerExpoAirplay", code: -2,
+          userInfo: [NSLocalizedDescriptionKey: "No audio output available"]))
     }
 
-    if let airPlayOutput = airPlayOutput {
-      print("airPlayOutput: \(airPlayOutput)")
-      return .success([
-        "route_id": airPlayOutput.uid,
-        "route_name": airPlayOutput.portName,
-        "port_type": airPlayOutput.portType.rawValue,
-        "is_airplay": true,
-      ])
-    }
+    let isAirPlay = primaryOutput.portType == .airPlay
+    print(
+      "Primary output: \(primaryOutput.portName) with type: \(primaryOutput.portType), isAirPlay: \(isAirPlay)"
+    )
 
-    // If no AirPlay, return the first available output
-    if let firstOutput = outputs.first {
-      return .success([
-        "route_id": firstOutput.uid,
-        "route_name": firstOutput.portName,
-        "port_type": firstOutput.portType.rawValue,
-        "is_airplay": false,
-      ])
-    }
-
-    return .failure(
-      NSError(
-        domain: "LazerExpoAirplay", code: -2,
-        userInfo: [NSLocalizedDescriptionKey: "No route available"]))
+    return .success([
+      "route_id": primaryOutput.uid,
+      "route_name": primaryOutput.portName,
+      "port_type": primaryOutput.portType.rawValue,
+      "is_airplay": isAirPlay,
+    ])
   }
 
   private func showAirPlayPicker() -> LazerResult<Void, Error> {
-    let routePickerView = AVRoutePickerView()
+    guard let routePickerView = self.routePickerView else {
+      return .failure(
+        NSError(
+          domain: "LazerExpoAirplay", code: -1,
+          userInfo: [NSLocalizedDescriptionKey: "Route picker not initialized"]))
+    }
 
     let workItem = DispatchWorkItem {
       // Find the route picker button and simulate a tap
@@ -137,28 +136,6 @@ public class LazerExpoAirplayModule: Module {
     }
     DispatchQueue.main.async(execute: workItem)
     return .success(())
-  }
-
-  private func selectRoute(routeId: String) -> LazerResult<Bool, Error> {
-    let audioSession = AVAudioSession.sharedInstance()
-    do {
-      // Get available routes
-      let routes = audioSession.availableInputs ?? []
-
-      print("routes: \(routes)")
-
-      // Find the matching route
-      if let matchingRoute = routes.first(where: { $0.uid == routeId }) {
-        try audioSession.setPreferredInput(matchingRoute)
-        return .success(true)
-      }
-      return .failure(
-        NSError(
-          domain: "LazerExpoAirplay", code: -4,
-          userInfo: [NSLocalizedDescriptionKey: "Route not found"]))
-    } catch {
-      return .failure(error)
-    }
   }
 
   private func cleanup() {
