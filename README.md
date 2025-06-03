@@ -7,64 +7,26 @@ Expo module for controlling AirPlay and audio output devices on iOS.
 
 ## Features
 
-- Get current AirPlay device connection status
-- List all available audio output devices
-- **Detect AirPlay device availability** - Know when AirPlay devices are
-  discoverable
+- Get current audio route information (including AirPlay detection)
 - Show native AirPlay device picker
-- Listen to route change events (general and AirPlay-specific)
-- Programmatically trigger device selection via picker
+- Listen to audio route change events
 
 ## API Documentation
 
 ### Functions
 
-#### `getCurrentAirplayDevice()`
+#### `getCurrentRoute()`
 
-Returns the currently connected AirPlay device, or null if no AirPlay device is
-connected.
+Returns information about the currently active audio route, including whether
+it's an AirPlay device.
 
 ```typescript
-const result = await LazerExpoAirplay.getCurrentAirplayDevice();
+const result = await LazerExpoAirplay.getCurrentRoute();
 if (result.success) {
-  console.log("Current AirPlay device:", result.data);
-  // result.data: { route_id: string, route_name: string, port_type: string, is_airplay: true }
+  console.log("Current audio route:", result.data);
+  // result.data: { route_id: string, route_name: string, port_type: string, is_airplay: boolean }
 } else {
-  console.log("No AirPlay device connected:", result.error);
-}
-```
-
-#### `getOutputs()`
-
-Returns all available audio output devices.
-
-```typescript
-const result = await LazerExpoAirplay.getOutputs();
-if (result.success) {
-  console.log("Available outputs:", result.data);
-  // result.data: Array<{ route_id: string, route_name: string, port_type: string, is_airplay: boolean }>
-}
-```
-
-#### `getAvailableAirplayDevices()`
-
-Detects if AirPlay devices are available for connection. Due to iOS privacy
-restrictions, this doesn't return specific device names but provides
-availability status.
-
-```typescript
-const result = await LazerExpoAirplay.getAvailableAirplayDevices();
-if (result.success) {
-  console.log("AirPlay availability:", result.data);
-  // result.data: {
-  //   route_detection_enabled: boolean,
-  //   multiple_routes_detected: boolean,
-  //   airplay_available: boolean,
-  //   current_category: string,
-  //   supports_airplay_category: boolean,
-  //   current_route_supports_airplay: boolean,
-  //   category_options: number
-  // }
+  console.log("No audio route available:", result.error);
 }
 ```
 
@@ -73,19 +35,9 @@ if (result.success) {
 Shows the native iOS AirPlay device picker.
 
 ```typescript
-await LazerExpoAirplay.show();
-```
-
-#### `selectOutputDevice(routeId: string)`
-
-Triggers the native device picker for the user to select an output device. Due
-to iOS limitations, this cannot programmatically select a specific device but
-will open the picker.
-
-```typescript
-const result = await LazerExpoAirplay.selectOutputDevice("device-route-id");
+const result = await LazerExpoAirplay.show();
 if (result.success) {
-  console.log("Device picker triggered");
+  console.log("AirPlay picker shown");
 }
 ```
 
@@ -93,7 +45,8 @@ if (result.success) {
 
 #### `onRouteChange`
 
-Fired when any audio route changes occur.
+Fired when audio route changes occur (switching between speakers, headphones,
+Bluetooth, AirPlay, etc.).
 
 ```typescript
 import { useEvent } from "expo";
@@ -104,25 +57,16 @@ useEffect(() => {
   if (onRouteChange) {
     console.log("Route changed:", onRouteChange);
     // { current_route: AirplayRoute, state: ConnectionState }
+
+    // Check if it's an AirPlay device
+    if (onRouteChange.current_route?.is_airplay) {
+      console.log(
+        "AirPlay device connected:",
+        onRouteChange.current_route.route_name,
+      );
+    }
   }
 }, [onRouteChange]);
-```
-
-#### `onAirplayChange`
-
-Fired specifically when AirPlay device connections change.
-
-```typescript
-import { useEvent } from "expo";
-
-const onAirplayChange = useEvent(LazerExpoAirplay, "onAirplayChange");
-
-useEffect(() => {
-  if (onAirplayChange) {
-    console.log("AirPlay device changed:", onAirplayChange);
-    // { current_route: AirplayRoute, state: ConnectionState }
-  }
-}, [onAirplayChange]);
 ```
 
 ### Types
@@ -133,16 +77,6 @@ export type AirplayRoute = {
   route_name: string;
   port_type: string;
   is_airplay: boolean;
-};
-
-export type AirplayAvailabilityInfo = {
-  route_detection_enabled: boolean; // Is route detection active
-  multiple_routes_detected: boolean; // Are multiple routes detected
-  current_route_supports_airplay: boolean; // Does current route support AirPlay
-  airplay_available: boolean; // Are AirPlay devices likely available
-  current_category: string; // Current audio session category
-  supports_airplay_category: boolean; // Does category support AirPlay
-  category_options: number; // Audio session category options
 };
 
 export type ConnectionState =
@@ -193,72 +127,48 @@ Run `npx pod-install` after installing the npm package.
 import React, { useEffect, useState } from "react";
 import { Button, Text, View } from "react-native";
 import { useEvent } from "expo";
-import LazerExpoAirplay, {
-  AirplayAvailabilityInfo,
-  AirplayRoute,
-} from "@lazer/expo-airplay";
+import LazerExpoAirplay, { AirplayRoute } from "@lazer/expo-airplay";
 
 export default function AirPlayExample() {
-  const [currentDevice, setCurrentDevice] = useState<AirplayRoute | null>(null);
-  const [outputs, setOutputs] = useState<AirplayRoute[]>([]);
-  const [availability, setAvailability] = useState<
-    AirplayAvailabilityInfo | null
-  >(null);
+  const [currentRoute, setCurrentRoute] = useState<AirplayRoute | null>(null);
 
-  const onAirplayChange = useEvent(LazerExpoAirplay, "onAirplayChange");
+  const onRouteChange = useEvent(LazerExpoAirplay, "onRouteChange");
 
   useEffect(() => {
-    loadDevices();
+    loadCurrentRoute();
   }, []);
 
   useEffect(() => {
-    if (onAirplayChange) {
-      console.log("AirPlay device changed:", onAirplayChange);
-      loadDevices(); // Refresh on change
+    if (onRouteChange) {
+      console.log("Audio route changed:", onRouteChange);
+      setCurrentRoute(onRouteChange.current_route);
     }
-  }, [onAirplayChange]);
+  }, [onRouteChange]);
 
-  const loadDevices = async () => {
-    // Get current AirPlay device
-    const currentResult = await LazerExpoAirplay.getCurrentAirplayDevice();
-    if (currentResult.success) {
-      setCurrentDevice(currentResult.data);
-    }
-
-    // Get all outputs
-    const outputsResult = await LazerExpoAirplay.getOutputs();
-    if (outputsResult.success) {
-      setOutputs(outputsResult.data);
-    }
-
-    // Check AirPlay availability
-    const availabilityResult = await LazerExpoAirplay
-      .getAvailableAirplayDevices();
-    if (availabilityResult.success) {
-      setAvailability(availabilityResult.data);
+  const loadCurrentRoute = async () => {
+    const result = await LazerExpoAirplay.getCurrentRoute();
+    if (result.success) {
+      setCurrentRoute(result.data);
+    } else {
+      setCurrentRoute(null);
     }
   };
 
-  const showPicker = async () => {
+  const showAirPlayPicker = async () => {
     await LazerExpoAirplay.show();
   };
 
   return (
     <View style={{ padding: 20 }}>
-      <Text>Current AirPlay Device:</Text>
-      <Text>{currentDevice ? currentDevice.route_name : "None connected"}</Text>
+      <Text>Current Audio Route:</Text>
+      <Text>
+        {currentRoute ? currentRoute.route_name : "No route available"}
+      </Text>
+      <Text>Type: {currentRoute?.port_type}</Text>
+      <Text>AirPlay: {currentRoute?.is_airplay ? "Yes" : "No"}</Text>
 
-      <Text>AirPlay Available:</Text>
-      <Text>{availability?.airplay_available ? "Yes" : "No"}</Text>
-
-      <Text>Available Outputs:</Text>
-      {outputs.map((output) => (
-        <Text key={output.route_id}>
-          {output.route_name} {output.is_airplay ? "(AirPlay)" : ""}
-        </Text>
-      ))}
-
-      <Button title="Show AirPlay Picker" onPress={showPicker} />
+      <Button title="Show AirPlay Picker" onPress={showAirPlayPicker} />
+      <Button title="Refresh Route" onPress={loadCurrentRoute} />
     </View>
   );
 }
