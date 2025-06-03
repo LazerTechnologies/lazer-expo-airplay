@@ -3,7 +3,18 @@ import AVKit
 import ExpoModulesCore
 
 public class LazerExpoAirplayModule: Module {
-  private var routeObserver: NSKeyValueObservation?
+
+  private enum ErrorCode: Int {
+    case audioSessionNotInitialized = 1001
+    case noAudioOutputAvailable = 1002
+    case routePickerNotInitialized = 1003
+    case routePickerSetupFailed = 1004
+  }
+
+  private static let errorDomain = "LazerExpoAirplay"
+  private static let debugLogging = true  // Set to true for debug logging
+
+  private var routeObserver: NSObjectProtocol?
   private var audioSession: AVAudioSession?
   private var routePickerView: AVRoutePickerView?
 
@@ -24,7 +35,7 @@ public class LazerExpoAirplayModule: Module {
 
     OnCreate {
       self.audioSession = AVAudioSession.sharedInstance()
-      self.routePickerView = AVRoutePickerView()
+      self.setupRoutePickerView()
       self.setupAirPlayObserver()
     }
 
@@ -33,113 +44,186 @@ public class LazerExpoAirplayModule: Module {
     }
   }
 
+  private func setupRoutePickerView() {
+    self.routePickerView = AVRoutePickerView(frame: .zero)
+
+    DispatchQueue.main.async { [weak self] in
+      guard let routePickerView = self?.routePickerView,
+        let windowScene = UIApplication.shared.connectedScenes.first
+          as? UIWindowScene,
+        let window = windowScene.windows.first,
+        let rootViewController = window.rootViewController
+      else {
+        self?.logDebug("Failed to add route picker to view hierarchy")
+        return
+      }
+
+      // Add as hidden subview to ensure it works properly
+      routePickerView.alpha = 0
+      routePickerView.isHidden = true
+      rootViewController.view.addSubview(routePickerView)
+    }
+  }
+
   private func setupAirPlayObserver() {
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(audioRouteChanged),
-      name: AVAudioSession.routeChangeNotification,
-      object: nil
-    )
+    if let observer = routeObserver {
+      NotificationCenter.default.removeObserver(observer)
+      routeObserver = nil
+    }
+
+    routeObserver = NotificationCenter.default.addObserver(
+      forName: AVAudioSession.routeChangeNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] notification in
+      self?.audioRouteChanged(notification: notification)
+    }
   }
 
   @objc private func audioRouteChanged(notification: Notification) {
-    DispatchQueue.main.async {
-      if let userInfo = notification.userInfo,
-        let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
-        let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue)
-      {
-        let routeInfo = self.getCurrentRoute()
-        var connectionState: String = "unknown"
+    self.logDebug("audioRouteChanged: \(notification.userInfo ?? [:])")
 
-        switch reason {
-        case .newDeviceAvailable:
-          connectionState = "device_available"
-        case .oldDeviceUnavailable:
-          connectionState = "device_unavailable"
-        case .categoryChange:
-          connectionState = "category_changed"
-        case .override:
-          connectionState = "override"
-        case .wakeFromSleep:
-          connectionState = "wake_from_sleep"
-        case .noSuitableRouteForCategory:
-          connectionState = "no_suitable_route"
-        case .routeConfigurationChange:
-          connectionState = "configuration_changed"
-        default:
-          connectionState = "unknown"
-        }
-
-        if let routeInfo = routeInfo.data {
-          // Send general route change event
-          self.sendEvent(
-            "onRouteChange",
-            [
-              "current_route": routeInfo,
-              "state": connectionState,
-            ])
-        }
-      }
+    // Already on main queue due to observer setup
+    guard let userInfo = notification.userInfo,
+      let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
+      let previousRoute = userInfo[AVAudioSessionRouteChangePreviousRouteKey]
+        as? AVAudioSessionRouteDescription,
+      let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue)
+    else {
+      return
     }
+
+    guard let audioSession = self.audioSession else { return }
+    let currentRoute = audioSession.currentRoute
+    let connectionState = self.mapRouteChangeReason(reason)
+
+    self.logDebug("Audio route changed: \(connectionState)")
+
+    self.sendEvent(
+      "onRouteChange",
+      [
+        "current_route": routeDescriptionToDictionary(currentRoute),
+        "previous_route": routeDescriptionToDictionary(previousRoute),
+        "state": connectionState,
+      ])
+  }
+
+  private func mapRouteChangeReason(
+    _ reason: AVAudioSession.RouteChangeReason
+  ) -> String {
+    switch reason {
+    case .newDeviceAvailable:
+      return "device_available"
+    case .oldDeviceUnavailable:
+      return "device_unavailable"
+    case .categoryChange:
+      return "category_changed"
+    case .override:
+      return "override"
+    case .wakeFromSleep:
+      return "wake_from_sleep"
+    case .noSuitableRouteForCategory:
+      return "no_suitable_route"
+    case .routeConfigurationChange:
+      return "configuration_changed"
+    default:
+      return "unknown"
+    }
+  }
+
+  private func routeDescriptionToDictionary(_ route: AVAudioSessionRouteDescription) -> [String:
+    Any]?
+  {
+    guard let primaryOutput = route.outputs.first else {
+      return nil
+    }
+
+    let isAirPlay = primaryOutput.portType == .airPlay
+    return [
+      "route_id": primaryOutput.uid,
+      "route_name": primaryOutput.portName,
+      "port_type": primaryOutput.portType.rawValue,
+      "is_airplay": isAirPlay,
+    ]
   }
 
   private func getCurrentRoute() -> LazerResult<[String: Any], Error> {
     guard let audioSession = self.audioSession else {
       return .failure(
-        NSError(
-          domain: "LazerExpoAirplay", code: -1,
-          userInfo: [NSLocalizedDescriptionKey: "Audio session not initialized"]))
+        self.createError(
+          .audioSessionNotInitialized, "Audio session not initialized"
+        ))
     }
 
     let currentRoute = audioSession.currentRoute
-    let outputs = currentRoute.outputs
-
-    print("outputs: \(outputs)")
-
-    // Get the primary output (usually the first one)
-    guard let primaryOutput = outputs.first else {
+    guard let routeDict = routeDescriptionToDictionary(currentRoute) else {
       return .failure(
-        NSError(
-          domain: "LazerExpoAirplay", code: -2,
-          userInfo: [NSLocalizedDescriptionKey: "No audio output available"]))
+        self.createError(
+          .noAudioOutputAvailable, "No audio output available"))
     }
-
-    let isAirPlay = primaryOutput.portType == .airPlay
-    print(
-      "Primary output: \(primaryOutput.portName) with type: \(primaryOutput.portType), isAirPlay: \(isAirPlay)"
-    )
-
-    return .success([
-      "route_id": primaryOutput.uid,
-      "route_name": primaryOutput.portName,
-      "port_type": primaryOutput.portType.rawValue,
-      "is_airplay": isAirPlay,
-    ])
+    return .success(routeDict)
   }
 
   private func showAirPlayPicker() -> LazerResult<Void, Error> {
-    guard let routePickerView = self.routePickerView else {
+    guard self.routePickerView != nil else {
       return .failure(
-        NSError(
-          domain: "LazerExpoAirplay", code: -1,
-          userInfo: [NSLocalizedDescriptionKey: "Route picker not initialized"]))
+        self.createError(
+          .routePickerNotInitialized, "Route picker not initialized"))
     }
 
-    let workItem = DispatchWorkItem {
-      // Find the route picker button and simulate a tap
-      for subview in routePickerView.subviews {
-        if let button = subview as? UIButton {
-          button.sendActions(for: .touchUpInside)
-          break
+    let workItem = DispatchWorkItem { [weak self] in
+      // Give the route picker a moment to ensure subviews are populated
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        guard let self = self,
+          let routePickerView = self.routePickerView
+        else { return }
+
+        // Find the route picker button and simulate a tap
+        for subview in routePickerView.subviews {
+          if let button = subview as? UIButton {
+            self.logDebug("Triggering AirPlay picker")
+            button.sendActions(for: .touchUpInside)
+            return
+          }
         }
+
+        self.logDebug(
+          "Warning: No button found in AVRoutePickerView subviews")
       }
     }
+
     DispatchQueue.main.async(execute: workItem)
     return .success(())
   }
 
   private func cleanup() {
-    // Remove notification observer
-    NotificationCenter.default.removeObserver(self)
+    DispatchQueue.main.async { [weak self] in
+      // Remove notification observer with proper cleanup
+      if let observer = self?.routeObserver {
+        NotificationCenter.default.removeObserver(observer)
+        self?.routeObserver = nil
+      }
+
+      self?.routePickerView?.removeFromSuperview()
+      self?.routePickerView = nil
+
+      self?.audioSession = nil
+    }
+  }
+
+  private func createError(_ code: ErrorCode, _ description: String)
+    -> NSError
+  {
+    return NSError(
+      domain: Self.errorDomain,
+      code: code.rawValue,
+      userInfo: [NSLocalizedDescriptionKey: description]
+    )
+  }
+
+  private func logDebug(_ message: String) {
+    if Self.debugLogging {
+      print("[LazerExpoAirplay] \(message)")
+    }
   }
 }
