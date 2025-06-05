@@ -1,5 +1,6 @@
 import { NativeModule, requireNativeModule } from 'expo';
 
+import { Platform } from 'react-native';
 import { AirplayRoute, LazerExpoAirplayModuleEvents, LazerExpoAirplayModuleResult } from './LazerExpoAirplay.types';
 
 declare class LazerExpoAirplayModule extends NativeModule<LazerExpoAirplayModuleEvents> {
@@ -7,5 +8,39 @@ declare class LazerExpoAirplayModule extends NativeModule<LazerExpoAirplayModule
   show(): LazerExpoAirplayModuleResult<void>;
 }
 
-// This call loads the native module object from the JSI.
-export default requireNativeModule<LazerExpoAirplayModule>('LazerExpoAirplay');
+const MockAirplayModule: LazerExpoAirplayModule = {
+  name: 'LazerExpoAirplay',
+  getCurrentRoute: async () => {
+    return {
+      success: false,
+      error: `Not implemented on ${Platform.OS}`,
+    };
+  },
+  show: async () => {
+    return {
+      success: false,
+      error: `Not implemented on ${Platform.OS}`,
+    };
+  },
+  addListener: () => {
+    return {
+      remove: () => {
+        // noop
+      }
+    }
+  },
+  removeListener: (): void => {
+    // noop
+  },
+  removeAllListeners: (): void => {
+    // noop
+  },
+  emit: () => {
+    // noop
+  },
+  listenerCount: () => {
+    return 0;
+  }
+}
+
+export default (Platform.OS === 'ios' ? requireNativeModule<LazerExpoAirplayModule>('LazerExpoAirplay') : MockAirplayModule);

@@ -12,7 +12,6 @@ interface UseCurrentRouteResult {
 
 export const useCurrentRoute = (): UseCurrentRouteResult => {
   const [currentRoute, setCurrentRoute] = useState<AirplayRoute | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEventListener(LazerExpoAirplay, 'onRouteChange', (event: OnRouteChangeEventPayload) => {
@@ -21,28 +20,28 @@ export const useCurrentRoute = (): UseCurrentRouteResult => {
   });
 
   const refresh = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const result = await LazerExpoAirplay.getCurrentRoute();
+    await LazerExpoAirplay.getCurrentRoute().then((result) => {
       if (result.success) {
         setCurrentRoute(result.data);
       } else {
         setCurrentRoute(null);
         setError(result.error);
       }
-    } catch (err) {
-      setCurrentRoute(null);
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
 
   useEffect(() => {
-    refresh();
+    LazerExpoAirplay.getCurrentRoute().then((result) => {
+      if (result.success) {
+        setCurrentRoute(result.data);
+      } else {
+        setCurrentRoute(null);
+        setError(result.error);
+      }
+    });
   }, []);
+
+  const isLoading = currentRoute == null && error == null;
 
   return {
     currentRoute,
